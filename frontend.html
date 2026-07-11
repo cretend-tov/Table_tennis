@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>탁구 3D 구간 분석기</title>
+  
+  <style>:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0b1020;
+  color: #f8fafc;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: linear-gradient(180deg,#0b1020,#111827); }
+button, input, textarea { font: inherit; }
+button {
+  border: 1px solid #334155; background: #1e293b; color: #f8fafc;
+  border-radius: 12px; padding: .72rem .9rem; cursor: pointer; touch-action: manipulation;
+}
+button:active { transform: scale(.98); }
+button.primary { background: #16a34a; border-color: #22c55e; font-weight: 700; }
+button.ghost { background: transparent; }
+input, textarea {
+  width: 100%; background: #0f172a; color: #fff; border: 1px solid #334155;
+  border-radius: 10px; padding: .72rem;
+}
+input[type="range"], input[type="checkbox"] { accent-color: #22c55e; }
+input[type="checkbox"] { width: 22px; height: 22px; }
+.topbar {
+  position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between;
+  align-items: center; padding: 14px 16px; background: rgba(11,16,32,.92);
+  backdrop-filter: blur(12px); border-bottom: 1px solid #1e293b;
+}
+h1 { font-size: 1.15rem; margin: 0; }
+h2 { font-size: 1rem; margin: 0 0 14px; }
+.topbar p { margin: 3px 0 0; color: #94a3b8; font-size: .82rem; }
+main { max-width: 1100px; margin: auto; padding: 12px; }
+.card {
+  background: rgba(15,23,42,.92); border: 1px solid #263348; border-radius: 18px;
+  padding: 14px; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18);
+}
+.tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.tab { flex: 1; }
+.tab.active { background: #334155; border-color: #64748b; }
+.panel { display: none; }
+.panel.active { display: block; }
+.file-picker {
+  display: block; text-align: center; padding: 18px; border: 1px dashed #64748b;
+  border-radius: 14px; background: #111827; font-weight: 700;
+}
+.file-picker input { margin-top: 10px; }
+.help { color: #94a3b8; font-size: .82rem; line-height: 1.45; }
+.viewer-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.viewer-card { margin-bottom: 0; }
+.section-title { display: flex; justify-content: space-between; align-items: center; }
+.badge { font-size: .78rem; color: #cbd5e1; background: #1e293b; padding: 5px 9px; border-radius: 999px; }
+.video-stage, .three-stage {
+  position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden;
+  border-radius: 14px; background: #020617;
+}
+video, #youtubePlayer { width: 100%; height: 100%; object-fit: contain; }
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.three-stage canvas { display: block; width: 100%; height: 100%; }
+#threeHint {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  color: #94a3b8; padding: 24px; pointer-events: none;
+}
+.inline { display: flex; gap: 8px; align-items: center; }
+.inline input { min-width: 0; }
+.time-row { display: flex; justify-content: space-between; margin-top: 8px; color: #94a3b8; font-variant-numeric: tabular-nums; }
+.wide { width: 100%; }
+.controls { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+.controls button { flex: 1; min-width: 92px; }
+.controls.compact button { min-width: auto; }
+.controls.end { justify-content: flex-end; }
+.controls.end button { flex: 0 1 auto; }
+.range-grid { display: grid; gap: 12px; margin-top: 12px; }
+.range-grid label { color: #cbd5e1; font-size: .9rem; }
+.range-grid label > input { margin-top: 8px; }
+.check-row { display: flex; align-items: center; gap: 10px; }
+.switch { display: flex; align-items: center; gap: 7px; font-size: .85rem; }
+textarea { resize: vertical; }
+.hidden { display: none !important; }
+footer { color: #64748b; text-align: center; font-size: .75rem; padding: 12px 20px 30px; }
+@media (min-width: 820px) {
+  .viewer-grid { grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
+  .range-grid { grid-template-columns: 1fr 1fr; }
+}
+
+html,body{overflow-x:hidden}</style>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>탁구 3D 구간 분석기</h1>
+      <p>구간 반복 · 배속 · 자세 골격 분석</p>
+    </div>
+    
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="upload">영상 파일</button>
+        <button class="tab" data-tab="youtube">YouTube</button>
+      </div>
+
+      <div id="uploadPanel" class="panel active">
+        <label class="file-picker">
+          <span>탁구 영상 선택</span>
+          <input id="videoFile" type="file" accept="video/*" />
+        </label>
+        <p class="help">본인이 촬영했거나 사용할 권리가 있는 영상을 선택하세요.</p>
+      </div>
+
+      <div id="youtubePanel" class="panel">
+        <div class="inline">
+          <input id="youtubeUrl" type="url" placeholder="YouTube 주소 붙여넣기" />
+          <button id="loadYoutube">불러오기</button>
+        </div>
+        <p class="help">YouTube는 구간·배속 재생만 지원합니다. 보안 제한으로 3D 자세 추출은 영상 파일에서만 가능합니다.</p>
+      </div>
+    </section>
+
+    <section class="viewer-grid">
+      <article class="card viewer-card">
+        <div class="section-title">
+          <h2>원본 영상</h2>
+          <span id="statusBadge" class="badge">영상 없음</span>
+        </div>
+
+        <div class="video-stage">
+          <video id="video" playsinline controls preload="metadata"></video>
+          <canvas id="overlay"></canvas>
+          <div id="youtubePlayer" class="hidden"></div>
+        </div>
+
+        <div class="time-row">
+          <span id="currentTime">00:00.00</span>
+          <span id="duration">00:00.00</span>
+        </div>
+
+        <input id="seek" class="wide" type="range" min="0" max="100" step="0.01" value="0" />
+
+        <div class="controls">
+          <button id="backFrame">−1프레임</button>
+          <button id="playPause" class="primary">재생</button>
+          <button id="nextFrame">+1프레임</button>
+        </div>
+      </article>
+
+      <article class="card viewer-card">
+        <div class="section-title">
+          <h2>3D 자세</h2>
+          <label class="switch">
+            <input id="poseToggle" type="checkbox" checked />
+            <span>분석</span>
+          </label>
+        </div>
+        <div id="threeContainer" class="three-stage">
+          <div id="threeHint">영상 파일을 선택하면 3D 골격이 표시됩니다.</div>
+        </div>
+        <div class="controls compact">
+          <button id="frontView">정면</button>
+          <button id="sideView">측면</button>
+          <button id="resetView">초기화</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>구간 및 재생 설정</h2>
+      <div class="range-grid">
+        <label>
+          시작 시간
+          <div class="inline">
+            <input id="startTime" type="number" min="0" step="0.01" value="0" />
+            <button id="setStart">현재 위치</button>
+          </div>
+        </label>
+        <label>
+          종료 시간
+          <div class="inline">
+            <input id="endTime" type="number" min="0" step="0.01" value="0" />
+            <button id="setEnd">현재 위치</button>
+          </div>
+        </label>
+      </div>
+
+      <div class="range-grid">
+        <label>
+          재생 속도 <strong id="speedValue">1.00×</strong>
+          <input id="speed" type="range" min="0.1" max="2" step="0.05" value="1" />
+        </label>
+        <label class="check-row">
+          <input id="loopToggle" type="checkbox" checked />
+          선택 구간 반복
+        </label>
+      </div>
+
+      <div class="controls">
+        <button id="jumpStart">시작점 이동</button>
+        <button id="playSegment" class="primary">선택 구간 재생</button>
+        <button id="jumpEnd">종료점 이동</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>분석 메모</h2>
+      <textarea id="memo" rows="4" placeholder="예: 임팩트 직전 오른쪽 팔꿈치가 너무 내려감"></textarea>
+      <div class="controls end">
+        <button id="saveMemo">기기에 저장</button>
+        <button id="exportMemo">TXT 내보내기</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    단일 카메라 기반 3D 추정은 코칭 보조용이며 정밀 모션캡처 결과와 다를 수 있습니다.
+  </footer>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/controls/OrbitControls.js";
+import {
+  FilesetResolver,
+  PoseLandmarker,
+  DrawingUtils
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/+esm";
+
+const $ = (id) => document.getElementById(id);
+const video = $("video");
+const overlay = $("overlay");
+const ctx = overlay.getContext("2d");
+let mode = "upload";
+let ytPlayer = null;
+let ytReady = false;
+let deferredPrompt = null;
+let poseLandmarker = null;
+let lastVideoTime = -1;
+let analyzing = false;
+let segmentPlaying = false;
+let start = 0;
+let end = 0;
+let frameRate = 30;
+
+function fmt(t) {
+  if (!Number.isFinite(t)) return "00:00.00";
+  const m = Math.floor(t / 60);
+  const s = t % 60;
+  return `${String(m).padStart(2,"0")}:${s.toFixed(2).padStart(5,"0")}`;
+}
+function current() {
+  return mode === "youtube" && ytPlayer && ytReady ? ytPlayer.getCurrentTime() : video.currentTime || 0;
+}
+function duration() {
+  return mode === "youtube" && ytPlayer && ytReady ? ytPlayer.getDuration() : video.duration || 0;
+}
+function seekTo(t) {
+  t = Math.max(0, Math.min(t, duration() || t));
+  if (mode === "youtube" && ytPlayer && ytReady) ytPlayer.seekTo(t, true);
+  else video.currentTime = t;
+}
+function play() {
+  if (mode === "youtube" && ytPlayer && ytReady) ytPlayer.playVideo();
+  else video.play();
+}
+function pause() {
+  if (mode === "youtube" && ytPlayer && ytReady) ytPlayer.pauseVideo();
+  else video.pause();
+}
+function setSpeed(v) {
+  v = Number(v);
+  $("speedValue").textContent = `${v.toFixed(2)}×`;
+  if (mode === "youtube" && ytPlayer && ytReady) {
+    const rates = ytPlayer.getAvailablePlaybackRates() || [1];
+    const nearest = rates.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);
+    ytPlayer.setPlaybackRate(nearest);
+    $("speedValue").textContent = `${nearest.toFixed(2)}×`;
+  } else video.playbackRate = v;
+}
+
+document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+  $(btn.dataset.tab + "Panel").classList.add("active");
+}));
+
+$("videoFile").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  mode = "upload";
+  $("youtubePlayer").classList.add("hidden");
+  video.classList.remove("hidden");
+  video.src = URL.createObjectURL(file);
+  $("statusBadge").textContent = "파일 불러오는 중";
+  video.onloadedmetadata = async () => {
+    start = 0; end = video.duration;
+    $("startTime").value = "0.00";
+    $("endTime").value = video.duration.toFixed(2);
+    $("duration").textContent = fmt(video.duration);
+    $("statusBadge").textContent = "영상 준비됨";
+    resizeOverlay();
+    await initPose();
+    requestAnimationFrame(tick);
+  };
+});
+
+function extractYoutubeId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("/")[0];
+    if (u.searchParams.get("v")) return u.searchParams.get("v");
+    const parts = u.pathname.split("/");
+    const idx = parts.findIndex(p => ["embed","shorts","live"].includes(p));
+    return idx >= 0 ? parts[idx+1] : "";
+  } catch { return ""; }
+}
+window.onYouTubeIframeAPIReady = () => {
+  ytPlayer = new YT.Player("youtubePlayer", {
+    height: "100%", width: "100%", videoId: "",
+    playerVars: { playsinline: 1, rel: 0 },
+    events: {
+      onReady: () => { ytReady = true; },
+      onStateChange: () => {}
+    }
+  });
+};
+$("loadYoutube").addEventListener("click", () => {
+  const id = extractYoutubeId($("youtubeUrl").value.trim());
+  if (!id) return alert("올바른 YouTube 주소를 입력하세요.");
+  if (!ytPlayer || !ytReady) return alert("YouTube 플레이어를 준비 중입니다. 잠시 후 다시 누르세요.");
+  mode = "youtube";
+  pause();
+  video.classList.add("hidden");
+  $("youtubePlayer").classList.remove("hidden");
+  ytPlayer.loadVideoById(id);
+  setTimeout(() => {
+    start = 0; end = ytPlayer.getDuration() || 0;
+    $("startTime").value = "0.00";
+    $("endTime").value = end.toFixed(2);
+    $("statusBadge").textContent = "YouTube 재생";
+  }, 1000);
+  requestAnimationFrame(tick);
+});
+
+$("setStart").onclick = () => { start = current(); $("startTime").value = start.toFixed(2); };
+$("setEnd").onclick = () => { end = current(); $("endTime").value = end.toFixed(2); };
+$("startTime").onchange = e => start = Math.max(0, Number(e.target.value) || 0);
+$("endTime").onchange = e => end = Math.max(start, Number(e.target.value) || 0);
+$("jumpStart").onclick = () => seekTo(start);
+$("jumpEnd").onclick = () => seekTo(end);
+$("playSegment").onclick = () => {
+  if (end <= start) return alert("종료 시간을 시작 시간보다 크게 설정하세요.");
+  segmentPlaying = true; seekTo(start); play();
+};
+$("playPause").onclick = () => {
+  if (mode === "youtube") {
+    const s = ytPlayer?.getPlayerState();
+    s === YT.PlayerState.PLAYING ? pause() : play();
+  } else video.paused ? play() : pause();
+};
+$("backFrame").onclick = () => { pause(); seekTo(current() - 1/frameRate); };
+$("nextFrame").onclick = () => { pause(); seekTo(current() + 1/frameRate); };
+$("speed").oninput = e => setSpeed(e.target.value);
+$("seek").oninput = e => seekTo((Number(e.target.value)/100) * duration());
+
+function tick() {
+  const t = current(), d = duration();
+  $("currentTime").textContent = fmt(t);
+  $("duration").textContent = fmt(d);
+  $("seek").value = d ? (t/d)*100 : 0;
+  if (segmentPlaying && t >= end - 0.025) {
+    if ($("loopToggle").checked) { seekTo(start); play(); }
+    else { pause(); segmentPlaying = false; }
+  }
+  if (mode === "upload" && $("poseToggle").checked && !video.paused && !video.ended) analyzeFrame();
+  requestAnimationFrame(tick);
+}
+
+function resizeOverlay() {
+  const rect = video.getBoundingClientRect();
+  overlay.width = Math.max(1, Math.round(rect.width * devicePixelRatio));
+  overlay.height = Math.max(1, Math.round(rect.height * devicePixelRatio));
+  overlay.style.width = rect.width + "px";
+  overlay.style.height = rect.height + "px";
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener("resize", resizeOverlay);
+
+async function initPose() {
+  if (poseLandmarker) return;
+  $("threeHint").textContent = "3D 자세 모델을 불러오는 중...";
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
+    );
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numPoses: 1,
+      minPoseDetectionConfidence: 0.5,
+      minPosePresenceConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    $("threeHint").textContent = "재생하면 3D 골격이 표시됩니다.";
+  } catch (err) {
+    console.error(err);
+    $("threeHint").textContent = "3D 모델을 불러오지 못했습니다. 인터넷 연결과 브라우저 WebGL 지원을 확인하세요.";
+  }
+}
+async function analyzeFrame() {
+  if (!poseLandmarker || analyzing || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  analyzing = true;
+  lastVideoTime = video.currentTime;
+  try {
+    const result = poseLandmarker.detectForVideo(video, performance.now());
+    drawOverlay(result);
+    if (result.worldLandmarks?.[0]) updateSkeleton(result.worldLandmarks[0]);
+  } catch (e) { console.error(e); }
+  analyzing = false;
+}
+function drawOverlay(result) {
+  const rect = video.getBoundingClientRect();
+  ctx.clearRect(0,0,rect.width,rect.height);
+  if (!result.landmarks?.[0]) return;
+  const draw = new DrawingUtils(ctx);
+  ctx.save();
+  draw.drawConnectors(result.landmarks[0], PoseLandmarker.POSE_CONNECTIONS, { color:"#22c55e", lineWidth:3 });
+  draw.drawLandmarks(result.landmarks[0], { color:"#f8fafc", radius:2 });
+  ctx.restore();
+}
+
+// Three.js
+const container = $("threeContainer");
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 16/9, 0.01, 100);
+camera.position.set(0, 0.4, 4);
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+container.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0,0.5,0);
+scene.add(new THREE.HemisphereLight(0xffffff,0x223344,2.2));
+const grid = new THREE.GridHelper(5,10);
+grid.position.y = -1.2;
+scene.add(grid);
+const skeletonGroup = new THREE.Group();
+scene.add(skeletonGroup);
+const joints = [];
+const jointGeo = new THREE.SphereGeometry(.045,12,12);
+const jointMat = new THREE.MeshStandardMaterial({ color:0xffffff });
+for (let i=0;i<33;i++) {
+  const m = new THREE.Mesh(jointGeo,jointMat);
+  joints.push(m); skeletonGroup.add(m);
+}
+const connectionPairs = PoseLandmarker.POSE_CONNECTIONS.map(c => [c.start,c.end]);
+const bones = connectionPairs.map(() => {
+  const geo = new THREE.BufferGeometry();
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0x22c55e}));
+  skeletonGroup.add(line); return line;
+});
+function updateSkeleton(lms) {
+  $("threeHint").classList.add("hidden");
+  lms.forEach((p,i) => {
+    // MediaPipe world: x right, y down, z depth. Flip y for Three.
+    joints[i].position.set(-p.x*2.2, -p.y*2.2, -p.z*2.2);
+    joints[i].visible = (p.visibility ?? 1) > .35;
+  });
+  connectionPairs.forEach(([a,b],i) => {
+    const pa = joints[a].position, pb = joints[b].position;
+    bones[i].geometry.dispose();
+    bones[i].geometry = new THREE.BufferGeometry().setFromPoints([pa,pb]);
+    bones[i].visible = joints[a].visible && joints[b].visible;
+  });
+}
+function sizeThree() {
+  const w = container.clientWidth, h = container.clientHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+function animate3D() { sizeThree(); controls.update(); renderer.render(scene,camera); requestAnimationFrame(animate3D); }
+animate3D();
+$("frontView").onclick = () => { camera.position.set(0,.4,4); controls.target.set(0,.4,0); controls.update(); };
+$("sideView").onclick = () => { camera.position.set(4,.4,0); controls.target.set(0,.4,0); controls.update(); };
+$("resetView").onclick = () => { camera.position.set(0,.4,4); controls.target.set(0,.4,0); skeletonGroup.rotation.set(0,0,0); controls.update(); };
+
+$("saveMemo").onclick = () => {
+  localStorage.setItem("tt3d-memo", $("memo").value);
+  alert("메모를 이 기기에 저장했습니다.");
+};
+$("memo").value = localStorage.getItem("tt3d-memo") || "";
+$("exportMemo").onclick = () => {
+  const text = `탁구 영상 분석 메모\n구간: ${fmt(start)} ~ ${fmt(end)}\n속도: ${$("speedValue").textContent}\n\n${$("memo").value}`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:"text/plain;charset=utf-8"}));
+  a.download = "탁구_분석_메모.txt"; a.click(); URL.revokeObjectURL(a.href);
+};
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); deferredPrompt=e; $("installBtn").classList.remove("hidden");
+});
+$("installBtn").onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt(); await deferredPrompt.userChoice;
+  deferredPrompt=null; $("installBtn").classList.add("hidden");
+};
+
+
+</script>
+</body>
+</html>
