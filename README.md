@@ -9,7 +9,7 @@
 ## 배포
 1. GitHub 저장소 루트에 위 파일 업로드
 2. Streamlit Community Cloud에서 Create app
-3. 저장소: cretend-tov/takgu-analysis-web
+3. 저장소: cretend-tov/Table_tennis
 4. 브랜치: main
 5. Main file path: app.py
 6. Advanced settings에서 Python 3.12 선택
