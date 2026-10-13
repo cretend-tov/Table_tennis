@@ -31,3 +31,10 @@
 - YouTube 영상은 보안 정책 때문에 3D 추출 불가
 - 업로드 영상 분석은 브라우저에서 수행
 - 단일 카메라 3D는 추정치
+
+## 개발·테스트 환경
+배포에는 `requirements.txt`만 사용합니다. 브라우저 자동화 테스트(Playwright)가 필요하면:
+```
+pip install -r requirements-dev.txt
+playwright install chromium
+```
